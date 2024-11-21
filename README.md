@@ -40,34 +40,48 @@ The following code uses above mathematical form and aggregates the green index w
 import pandas as pd
 from haversine import haversine
 
-data_df = pd.read_('Write your path\Data.csv')
-green_df = pd.read_csv('Write your path\Street Greenness.csv')
+entropy_bs = pd.read_excel('Write your path\df_bs_del.xlsx')
+entropy_bs_1 = entropy_bs[entropy_bs['delentropy'].isna()].reset_index()
+df_bs = entropy_bs[['위도', '경도', 'delentropy']].copy()
+df_bs = df_bs[df_bs['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
 
-Aggregated_Green_Index = []
-Aggregated_Green_Index_Distance = []
+Aggregated_Entropy = []
+Aggregated_Entropy_Distance = []
+entropy_bs['delentropy_d'] = ''
 
-num = 1
-for y, x, ind in zip(data_df['y'], data_df['x'], data_df.index):
+a = 0
+
+for y, x, ind in zip(entropy_bs_1['위도'], entropy_bs_1['경도'], entropy_bs_1.index):
   distance = []
 
-  for gr_y, gr_x, hgvi in zip(green_df['Latitude'], green_df['Longitude'], green_df['Green Index']):
-    dis = haversine([y,x], [gr_y, gr_x], unit='km')
-    distance.append([x,y,gr_x,gr_y,dis,hgvi])
+  for en_y, en_x, hgvi in zip(df_bs['위도'], df_bs['경도'], df_bs['delentropy']):
+    dis = haversine([y,x], [en_y, en_x], unit='km')
+    distance.append([x,y,en_x,en_y,dis,hgvi])
   dis_df = pd.DataFrame(distance)
-  dis_df.columns = ['x','y','gr_x','gr_y','distance','HGVI']
+  dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
   dis_df = dis_df.sort_values('distance', ascending=True)
 
-  # Extract the 50 nearest green indices
-  dis_df_50 = dis_df.iloc[:50]
+  # Extract the 100 nearest green indices
+  dis_df_100 = dis_df.iloc[:100]
 
-  mean_hgvi_50 = dis_df_50['HGVI'].mean()
-  mean_dis_50 = dis_df_50['distance'].mean()
+  mean_hgvi_100 = dis_df_100['HGVI'].mean()
+  mean_dis_100 = dis_df_100['distance'].mean()
 
-  Aggregated_Green_Index.append(mean_hgvi_50)
-  Aggregated_Green_Index_Distance.append(mean_dis_50)
+  Aggregated_Entropy.append(mean_hgvi_100)
+  Aggregated_Entropy_Distance.append(mean_dis_100)
 
-data_df['Green Index'] = Aggregated_Green_Index
-data_df['Green Index_d'] = Aggregated_Green_Index_Distance
-data_df.to_csv('Green Index_Spatial Interpolation.csv',index=False,encoding='utf-8-sig')
+  a += 1
+
+  print(a, '/', len(entropy_bs_1))
+
+entropy_bs_1['delntropy'] = Aggregated_Entropy
+entropy_bs_1['delentropy_d'] = Aggregated_Entropy_Distance
+
+# Filling missing values
+for i in range(0,len(entropy_bs_1)):
+  entropy_bs['delentropy'][entropy_bs_1['level_0'][i]] = Aggregated_Entropy[i]
+  entropy_bs['delentropy_d'][entropy_bs_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
+
+entropy_bs.to_csv('Write your path\spatial_interpolation_bs.csv',index=False,encoding='utf-8-sig')
 ```
 Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Hedonic Dataset.xlsx*.
