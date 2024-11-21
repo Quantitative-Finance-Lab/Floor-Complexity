@@ -12,6 +12,69 @@ This four-step process is necessary to effectively compute the green index, and 
 
 Data in this repository consists of Excel and CSV files:
 
+## Calculation of Delentropy
+
+```python
+import os
+import pandas as pd
+from PIL import Image
+import numpy as np
+from scipy.signal import convolve2d
+
+def grayscale(image_path):
+  image = Image.open(image_path)
+  # Converted to grayscale
+  grayscale_image = image.convert('L')
+  grayscale_array = np.array(grayscale_image)
+  return grayscale_array
+
+def delentropy_2d(image):
+  image_with_nan = np.where(image == 255, np.nan, image)
+
+  gradient_x = np.array([[1,-1], [1,-1]])/2
+  gradient_y = np.array([[1,1], [-1, -1]])/2
+
+  fx = convolve2d(image_with_nan, gradient_x, mode='valid', boundary='fill', fillvalue=np.nan)
+  fy = convolve2d(image_with_nan, gradient_y, mode='valid', boundary='fill', fillvalue=np.nan)
+
+  histogram, _, _ = np.histogram2d(fx[~np.isnan(fx)], fy[~np.isnan(fy)], bins=[511, 511], range=[[-255, 255], [-255, 255]])
+
+  probability = histogram / np.sum(histogram)
+  delentropy = -np.sum(probability * np.log2(probability + np.finfo(float).eps))
+  return delentropy
+
+area = ['bs', 'dg', 'dj', 'gw']
+
+for i in range(0,len(area)):
+    name = area[i]
+    index = os.listdir(f"image_{name}")
+    df_index = [name.rstrip('.jpg') for name in index]
+    image_file = f"image_{name}\\"
+
+    busan = pd.DataFrame()
+    busan['index'] = ''
+    busan['delentropy'] = ''
+
+    del_value = []
+    del_index = []
+    a = 0
+
+    for i in range(0, len(os.listdir(f"image_{name}"))):
+        image_path = str(image_file) + str(df_index[i]) + '.jpg'
+        gray_image = grayscale(image_path)
+        del_image = delentropy_2d(gray_image)
+        del_index.append(df_index[i])
+        del_value.append(del_image)
+        print(a, '/', len(df_index))
+        a+=1
+
+    busan['index'] = del_index
+    busan['delentropy'] = del_value
+    busan.to_csv(f'Delentropy\del_{name}.csv', index=False)
+
+```
+
+
 ## Spatial Interpolation
 Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.   
 To implement the spatial interpolation method, refer to the sample data file named *'Data.csv'* and *Street Greenness.csv*.    
@@ -38,50 +101,66 @@ $$d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{
 The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation_bs.csv*.
 ```python
 import pandas as pd
+import pandas as pd
 from haversine import haversine
 
-entropy_bs = pd.read_excel('Write your path\df_bs_del.xlsx')
-entropy_bs_1 = entropy_bs[entropy_bs['delentropy'].isna()].reset_index()
-df_bs = entropy_bs[['위도', '경도', 'delentropy']].copy()
-df_bs = df_bs[df_bs['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
+area = ['bs', 'dg', 'dj', 'gw']
 
-Aggregated_Entropy = []
-Aggregated_Entropy_Distance = []
-entropy_bs['delentropy_d'] = ''
+for i in range(0, len(area)):
+    name = area[i]
 
-a = 0
+    df = pd.read_excel(f'Delentropy\df_{name}.xlsx')
+    df['Delentropy'] = ''
+    delentropy = pd.read_csv(f'Delentropy\del_{name}.csv')
 
-for y, x, ind in zip(entropy_bs_1['위도'], entropy_bs_1['경도'], entropy_bs_1.index):
-  distance = []
+    df['index'] = df['index'].astype(str)
+    delentropy['index'] = delentropy['index'].astype(str)
 
-  for en_y, en_x, hgvi in zip(df_bs['위도'], df_bs['경도'], df_bs['delentropy']):
-    dis = haversine([y,x], [en_y, en_x], unit='km')
-    distance.append([x,y,en_x,en_y,dis,hgvi])
-  dis_df = pd.DataFrame(distance)
-  dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
-  dis_df = dis_df.sort_values('distance', ascending=True)
+    del_df = pd.merge(df, delentropy, on=['index'], how ='left')
+    del_df.drop(columns = ['Delentropy'], inplace=True)
+    del_df.to_excel(f'Delentropy\df_{name}_del.xlsx', index=False)
 
-  # Extract the 100 nearest green indices
-  dis_df_100 = dis_df.iloc[:100]
+    ## Spatial Interpolation
+    del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
+    dff = del_df[['위도', '경도', 'delentropy']].copy()
+    dff = dff[dff['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
 
-  mean_hgvi_100 = dis_df_100['HGVI'].mean()
-  mean_dis_100 = dis_df_100['distance'].mean()
+    Aggregated_Entropy = []
+    Aggregated_Entropy_Distance = []
+    del_df['delentropy_d'] = ''
 
-  Aggregated_Entropy.append(mean_hgvi_100)
-  Aggregated_Entropy_Distance.append(mean_dis_100)
+    a = 0
 
-  a += 1
+    for y, x, ind in zip(del_df_1['위도'], del_df_1['경도'], del_df_1.index):
+        distance = []
 
-  print(a, '/', len(entropy_bs_1))
+        for en_y, en_x, hgvi in zip(dff['위도'], dff['경도'], dff['delentropy']):
+            dis = haversine([y,x], [en_y, en_x], unit='km')
+            distance.append([x,y,en_x,en_y,dis,hgvi])
+        dis_df = pd.DataFrame(distance)
+        dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
+        dis_df = dis_df.sort_values('distance', ascending=True)
 
-entropy_bs_1['delntropy'] = Aggregated_Entropy
-entropy_bs_1['delentropy_d'] = Aggregated_Entropy_Distance
+        # Extract the 100 nearest green indices
+        dis_df_100 = dis_df.iloc[:100]
 
-# Filling missing values
-for i in range(0,len(entropy_bs_1)):
-  entropy_bs['delentropy'][entropy_bs_1['level_0'][i]] = Aggregated_Entropy[i]
-  entropy_bs['delentropy_d'][entropy_bs_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
+        mean_hgvi_100 = dis_df_100['HGVI'].mean()
+        mean_dis_100 = dis_df_100['distance'].mean()
 
-entropy_bs.to_csv('Write your path\spatial_interpolation_bs.csv',index=False,encoding='utf-8-sig')
+        Aggregated_Entropy.append(mean_hgvi_100)
+        Aggregated_Entropy_Distance.append(mean_dis_100)
+
+        a += 1
+
+        print(a, '/', len(del_df_1))
+
+    del_df_1['delntropy'] = Aggregated_Entropy
+    del_df_1['delentropy_d'] = Aggregated_Entropy_Distance
+
+    for i in range(0,len(del_df_1)):
+        del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]  # i번째 결측치의 원래 index에 entropy값 넣기
+        del_df['delentropy_d'][del_df_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
+
+    del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
 ```
 Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Hedonic Dataset.xlsx*.
