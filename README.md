@@ -35,7 +35,7 @@ $$d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{
   Figure 3. Graphical description of spatial interpolation.
 </p>   
 
-The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation.csv*.
+The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation_bs.csv*.
 ```python
 import pandas as pd
 from haversine import haversine
