@@ -29,21 +29,6 @@ import numpy as np
 import os
 from PIL import Image
 
-def preprocess_image(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
-    
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    morphed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
-
-    contours, _ = cv2.findContours(morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours:
-        if cv2.contourArea(cnt) < 500:
-            cv2.drawContours(morphed, [cnt], 0, 0, -1)
-    
-    morphed = cv2.bitwise_not(morphed)
-    return morphed
-
 def apply_canny_and_morphology(image):
     blur = cv2.GaussianBlur(image, (5, 5), 0)
     edged = cv2.Canny(blur, 10, 250)
@@ -63,8 +48,7 @@ def find_and_mask_contours(image, closed):
     return result, contours
 
 def process_image(image):
-    morphed = preprocess_image(image)
-    edged, dilated = apply_canny_and_morphology(morphed)
+    edged, dilated = apply_canny_and_morphology(image)
     processed_image, _ = find_and_mask_contours(image, dilated)
     return processed_image
 
