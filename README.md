@@ -12,6 +12,7 @@ This four-step process is necessary to effectively compute the green index, and 
 
 Data in this repository consists of Excel and CSV files:
 - *Del_`area`.csv*: Delentropy values of each floor plan image
+- *Del_Hedonic Dataset_`area`.xlsx*: Hedonic dataset including floor complexity variable without spatial interpolation.
 - *Property Price and Delentropy_`area`.csv*: Aggregated hedonic dataset with hedonic variables including floor complexity variable.
   
 
@@ -196,7 +197,7 @@ area = ['bs', 'dg', 'dj', 'gw']
 
 for i in range(0, len(area)):
     name = area[i]
-    del_df = pd.read_excel(f'Property Price and Delentropy_{name}.xlsx')
+    del_df = pd.read_excel(f'Del_Hedonic Dataset_{area}.xlsx')
 
     ## Spatial Interpolation
     del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
@@ -239,6 +240,6 @@ for i in range(0, len(area)):
         del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]
         del_df['delentropy_d'][del_df_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
 
-    del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
+    del_df.to_csv(f'Property Price and Delentropy_{name}.csv',index=False,encoding='utf-8-sig')
 ```
-Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Property Price and Delentropy_`area`.xlsx*.
+Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Property Price and Delentropy_`area`.csv*.
