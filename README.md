@@ -29,15 +29,25 @@ import numpy as np
 import os
 from PIL import Image
 
-def apply_canny_and_morphology(image):
-    blur = cv2.GaussianBlur(image, (5, 5), 0)
-    edged = cv2.Canny(blur, 10, 250)
+def preprocess_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+    
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    morphed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        if cv2.contourArea(cnt) < 500:
+            cv2.drawContours(morphed, [cnt], 0, 0, -1)
+
+    return morphed
+
+def apply_morphology(image):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    dilated = cv2.dilate(edged, kernel, iterations=3)
+    dilated = cv2.dilate(image, kernel, iterations=3)
     closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
-    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
-    dilated_filled = cv2.dilate(closed, dilate_kernel, iterations=3)
-    return edged, dilated_filled
+    return dilated_filled
 
 def find_and_mask_contours(image, closed):
     contours, _ = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -48,7 +58,8 @@ def find_and_mask_contours(image, closed):
     return result, contours
 
 def process_image(image):
-    edged, dilated = apply_canny_and_morphology(image)
+    morphed = preprocess_image(image)
+    dilated = apply_morphology(morphed)
     processed_image, _ = find_and_mask_contours(image, dilated)
     return processed_image
 
@@ -80,6 +91,7 @@ if __name__ == "__main__":
         input_dir = os.path.join(base_dir, city)
         output_dir = os.path.join(output_base_dir, city)
         main(input_dir, output_dir)
+
 ```
 
 ## Calculation of Delentropy
