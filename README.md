@@ -173,24 +173,13 @@ The results are then saved in the *Del_`area`.csv* files.
 
 ## Spatial Interpolation
 Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.   
-To implement the spatial interpolation method, refer to the sample data file named *'Data.csv'* and *Street Greenness.csv*.    
-The columns required to effectively manage the green index are as follows:   
-
-*Data.csv*
-- x: Longitude in the Cartesian coordinate system of the transaction point
-- y: Latitude in the Cartesian coordinate system of the transaction point
-   
-*Street Greenness.csv*
-- Longitude: Longitude of GSV image
-- Latitude: Latitude of GSV image
-- Green Index: Calculated street greenness
 
 Spatial interpolation requires the distance between two objects based on longitude and latitude. It can be obtained by using haversine formula as follows:
 
 ```math
 d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_p) \cos(\text{lat}_g) \sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)
 ```
-
+where $R$ is the Earth's radius, set at 6,371 km; $\Delta \text{lat}$ is the difference between the latitude of the target property $\text{lat}_p$ and the latitude of the nearby apartment associated with Delentropy; $\Delta \text{lng}$ is the difference between the longitude of the target property $\text{lng}_p$ and the longitude of the nearby apartment associated with Delentropy.
    
 <p align="center">
   <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
