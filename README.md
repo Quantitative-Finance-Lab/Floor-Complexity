@@ -12,7 +12,7 @@ This four-step process is necessary to effectively compute the green index, and 
 
 Data in this repository consists of Excel and CSV files:
 - *Del_`area`.csv*: Delentropy values of each floor plan image
-- *Property Price and Delentropy_`area`.csv*: Aggregated hedonic dataset with 27 variables
+- *Property Price and Delentropy_`area`.csv*: Aggregated hedonic dataset with hedonic variables including floor complexity variable.
   
 
 ## Image Preprocessing
