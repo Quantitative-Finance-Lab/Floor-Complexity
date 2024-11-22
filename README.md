@@ -18,7 +18,7 @@ The raw data of floor plan images are stored in the *'RAW DATA'* folder. These r
 To refine the images for this purpose, edge detection is applied to extract the edges of the floor plans, followed by creating closed-form images and blurring the areas outside these closed forms. The processed images are then saved in the *'FLOOR PLAN IMAGE'* folder.
 
 <p align="center">
-  <img src = "/README_image/Image preprocessing.png" width = "100%"> <br>
+  <img src = "/README_image/Image preprocessing.jpg" width = "100%"> <br>
   Figure 2. Image preprocessing.
 </p>   
 
