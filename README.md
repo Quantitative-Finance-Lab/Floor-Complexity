@@ -12,6 +12,15 @@ This four-step process is necessary to effectively compute the green index, and 
 
 Data in this repository consists of Excel and CSV files:
 
+## Image Preprocessing
+Since Delentropy is calculated by changes of gray-scale level between pixels, image preprocessing is necessary. The raw data of floor plan images is in *'RAW DATA'* folder.
+To refine the images for accurate calculation, we detect edge image, edges of floor plan images, create closed form images and blur outside of closed form images.
+
+<p align="center">
+  <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
+  Figure 3. Graphical description of spatial interpolation.
+</p>   
+
 ## Calculation of Delentropy
 
 ```python
