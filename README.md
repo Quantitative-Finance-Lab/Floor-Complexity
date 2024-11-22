@@ -196,17 +196,7 @@ area = ['bs', 'dg', 'dj', 'gw']
 
 for i in range(0, len(area)):
     name = area[i]
-
-    df = pd.read_excel(f'Delentropy\df_{name}.xlsx')
-    df['Delentropy'] = ''
-    delentropy = pd.read_csv(f'Delentropy\del_{name}.csv')
-
-    df['index'] = df['index'].astype(str)
-    delentropy['index'] = delentropy['index'].astype(str)
-
-    del_df = pd.merge(df, delentropy, on=['index'], how ='left')
-    del_df.drop(columns = ['Delentropy'], inplace=True)
-    del_df.to_excel(f'Delentropy\df_{name}_del.xlsx', index=False)
+    del_df = pd.read_excel(f'Property Price and Delentropy_{name}.xlsx')
 
     ## Spatial Interpolation
     del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
