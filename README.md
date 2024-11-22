@@ -11,6 +11,9 @@ To drive the floor complexity index, we collect floor plan images, refine images
 This four-step process is necessary to effectively compute the green index, and sample data was stored in the 'DATA' folder to replicate this calculation.
 
 Data in this repository consists of Excel and CSV files:
+- *Del_`area`.csv*: Delentropy values of each floor plan image
+- *Property Price and Delentropy_`area`.csv*: Aggregated hedonic dataset with 27 variables
+  
 
 ## Image Preprocessing
 The raw data of floor plan images are stored in the *'RAW DATA'* folder. These raw images contain not only spatial information of the floor plans but also structural lengths, lines, and other details that can introduce noise during the delentropy calculation process. Since delentropy is determined by changes in grayscale levels between pixels, image preprocessing is essential to minimize noise and ensure accurate computation. 
@@ -166,6 +169,7 @@ for i in range(0,len(area)):
 
 ```
 
+The results are then saved in the *Del_`area`.csv* files.
 
 ## Spatial Interpolation
 Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.   
@@ -193,7 +197,7 @@ d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\D
   Figure 3. Graphical description of spatial interpolation.
 </p>   
 
-The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation_bs.csv*.
+The following code uses above mathematical form and aggregates the index with 100 images closest to the transaction point.
 ```python
 import pandas as pd
 import pandas as pd
@@ -258,4 +262,4 @@ for i in range(0, len(area)):
 
     del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
 ```
-Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Hedonic Dataset.xlsx*.
+Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Property Price and Delentropy_`area`.xlsx*.
