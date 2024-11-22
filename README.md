@@ -13,16 +13,103 @@ This four-step process is necessary to effectively compute the green index, and 
 Data in this repository consists of Excel and CSV files:
 
 ## Image Preprocessing
-Since Delentropy is calculated by changes of gray-scale level between pixels, image preprocessing is necessary. The raw data of floor plan images is in *'RAW DATA'* folder.
-To refine the images for accurate calculation, we detect edge image, edges of floor plan images, create closed form images and blur outside of closed form images.
+The raw data of floor plan images are stored in the *'RAW DATA'* folder. These raw images contain not only spatial information of the floor plans but also structural lengths, lines, and other details that can introduce noise during the delentropy calculation process. Since delentropy is determined by changes in grayscale levels between pixels, image preprocessing is essential to minimize noise and ensure accurate computation. 
+
+To refine the images for this purpose, edge detection is applied to extract the edges of the floor plans, followed by creating closed-form images and blurring the areas outside these closed forms. The processed images are then saved in the *'FLOOR PLAN IMAGE'* folder.
 
 <p align="center">
-  <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
-  Figure 3. Graphical description of spatial interpolation.
+  <img src = "/README_image/Image preprocessing.png" width = "100%"> <br>
+  Figure 2. Image preprocessing.
 </p>   
 
-## Calculation of Delentropy
+The follwing code is to perform above step:
+```python
+import cv2
+import numpy as np
+import os
+from PIL import Image
 
+def preprocess_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+    
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    morphed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        if cv2.contourArea(cnt) < 500:
+            cv2.drawContours(morphed, [cnt], 0, 0, -1)
+    
+    morphed = cv2.bitwise_not(morphed)
+    return morphed
+
+def apply_canny_and_morphology(image):
+    blur = cv2.GaussianBlur(image, (5, 5), 0)
+    edged = cv2.Canny(blur, 10, 250)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(edged, kernel, iterations=3)
+    closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
+    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    dilated_filled = cv2.dilate(closed, dilate_kernel, iterations=3)
+    return edged, dilated_filled
+
+def find_and_mask_contours(image, closed):
+    contours, _ = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(mask, contours, -1, 255, thickness=cv2.FILLED)
+    result = image.copy()
+    result[mask == 0] = [255, 255, 255]
+    return result, contours
+
+def process_image(image):
+    morphed = preprocess_image(image)
+    edged, dilated = apply_canny_and_morphology(morphed)
+    processed_image, _ = find_and_mask_contours(image, dilated)
+    return processed_image
+
+def main(input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    image_files = os.listdir(input_dir)
+    for idx, file_name in enumerate(image_files):
+        input_image_path = os.path.join(input_dir, file_name)
+        output_image_path = os.path.join(output_dir, file_name)
+        print(f"Processing {idx + 1}/{len(image_files)}: {file_name}")
+        
+        try:
+            image = Image.open(input_image_path)
+            img_np = np.array(image)
+            processed_image = process_image(img_np)
+            result_image = Image.fromarray(processed_image)
+            result_image.save(output_image_path)
+        except Exception as e:
+            print(f"Error processing {file_name}: {e}")
+
+if __name__ == "__main__":
+    base_dir = "images"
+    output_base_dir = "processed_images"
+    cities = ["bs", "dg", "dj", "gw"]
+
+    for city in cities:
+        input_dir = os.path.join(base_dir, city)
+        output_dir = os.path.join(output_base_dir, city)
+        main(input_dir, output_dir)
+```
+
+## Calculation of Delentropy
+Delentropy utilizes Deldensity as its probability density function, where Deldensity is derived using the following formula:
+```math
+p_{i,j}= \frac{1}{MN}\sum^M_{m=1} \sum^N_{n=1} \delta(\nabla_x f(m,n) - i, \nabla_y f(m,n)-j)
+```
+
+Based on the calculated Deldensity, Delentropy is then determined using the following equation:
+```math
+H(f)=-\sum_{i,j}p_{i,j} \log{p_{i,j}}
+```
+
+The follwing code is to calculate Delentropy:
 ```python
 import os
 import pandas as pd
@@ -100,7 +187,10 @@ The columns required to effectively manage the green index are as follows:
 
 Spatial interpolation requires the distance between two objects based on longitude and latitude. It can be obtained by using haversine formula as follows:
 
-$$d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_p) \cos(\text{lat}_g) \sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)$$
+```math
+d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_p) \cos(\text{lat}_g) \sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)
+```
+
    
 <p align="center">
   <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
@@ -131,7 +221,7 @@ for i in range(0, len(area)):
 
     ## Spatial Interpolation
     del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
-    dff = del_df[['위도', '경도', 'delentropy']].copy()
+    dff = del_df[['Latitude', 'Longitude', 'delentropy']].copy()
     dff = dff[dff['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
 
     Aggregated_Entropy = []
@@ -140,10 +230,10 @@ for i in range(0, len(area)):
 
     a = 0
 
-    for y, x, ind in zip(del_df_1['위도'], del_df_1['경도'], del_df_1.index):
+    for y, x, ind in zip(del_df_1['Latitude'], del_df_1['Longitude'], del_df_1.index):
         distance = []
 
-        for en_y, en_x, hgvi in zip(dff['위도'], dff['경도'], dff['delentropy']):
+        for en_y, en_x, hgvi in zip(dff['Latitude'], dff['Longitude'], dff['delentropy']):
             dis = haversine([y,x], [en_y, en_x], unit='km')
             distance.append([x,y,en_x,en_y,dis,hgvi])
         dis_df = pd.DataFrame(distance)
@@ -167,7 +257,7 @@ for i in range(0, len(area)):
     del_df_1['delentropy_d'] = Aggregated_Entropy_Distance
 
     for i in range(0,len(del_df_1)):
-        del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]  # i번째 결측치의 원래 index에 entropy값 넣기
+        del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]
         del_df['delentropy_d'][del_df_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
 
     del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
